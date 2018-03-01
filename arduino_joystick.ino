@@ -49,12 +49,13 @@ typedef struct _to_arduino {
 } __attribute__((packed)) To_Arduino;
 
 /**
- * This is used as part of the serialisation process
+ * This is used as part of the serialisation process. 
+ * It alows us to covert the struct used for communication into bytes we can send across the serial port.
  */
 typedef struct _msg_adaptor {
     union {
         Cmd cmd;
-        char buffer[sizeof(Cmd)];
+        uint8_t buffer[sizeof(Cmd)];
     };
 } Msg_Adaptor;
 
@@ -73,9 +74,13 @@ void setup() {
  * Main loop of the arduino. Handles communication and calling joystick_loop.
  */
 void loop() {
+    // we use this so the computer can tell where the message starts
     uint8_t MAGIC[2] = {0xBE, 0xEF};
+    
     bool found_first = false;
     int bytes_read = 0;
+    
+    // read until there are no bytes left
     while(Serial.available() > 0) {
         uint8_t val = Serial.read();
         if(val == MAGIC[1]) {
@@ -83,21 +88,26 @@ void loop() {
           found_first = true;
         }
 
+        // once we've found the start read out the bytes
         if(found_first) {
           if(bytes_read >=  sizeof(To_Arduino))  {
               break;
           }
         }
     }
-    //if(bytes_read > 0) {
-        Cmd cmd;
-        // zero the command struct
-        memset(&cmd, 0, sizeof(Cmd));
-        cmd = joystick_loop();
-        cmd.MAGIC_1 = MAGIC_1;
-        cmd.MAGIC_2 = MAGIC_2;
-        send_msg(cmd);
-    //}
+    
+    //declare a cmd struct
+    Cmd cmd;
+    // zero the command struct
+    memset(&cmd, 0, sizeof(Cmd));
+    
+    // get the values from the user supplied code
+    cmd = joystick_loop();
+    cmd.MAGIC_1 = MAGIC_1;
+    cmd.MAGIC_2 = MAGIC_2;
+    
+    // write to the buffer
+    send_msg(cmd);
 }
 
 /**
@@ -108,6 +118,7 @@ Cmd joystick_loop() {
     Cmd command;
 
     // Add you code here to control the rover
+    // this should make the rover turn at a 45deg whilst driving forward
     command.drive_vector.x = 1.0;
     command.drive_vector.y = 1.0;
 
