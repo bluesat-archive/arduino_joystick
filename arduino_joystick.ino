@@ -14,7 +14,6 @@ const uint16_t MAGIC_2 = 0xF00D;
  * Struct that represents the commands given to all the rover's joints
  */
 typedef struct _cmd {
-
     uint16_t MAGIC_1;
 
     // the direction we want the rover to drive as a vector
@@ -24,40 +23,23 @@ typedef struct _cmd {
         float y;
     } __attribute__((packed)) drive_vector;
 
-    // the arm's rotation (rads)
-    float arm_rotation;
-    // the arm's lower extension speed
-    // (pwm. 1500 is stop, 2000 is full outwards, 1000 is full backwards)
-    float arm_lower_pwm;
-    // the arm's upper extension speed
-    // (pwm. 1500 is stop, 2000 is full outwards, 1000 is full backwards)
-    float arm_upper_pwm;
-
-    // the claw's rotation speed (rad/s)
-    float claw_rot_speed;
-    //the claw's grip position (in pwm - get someone to explain this to you)
-    float claw_grip_pwm;
+    uint8_t drive_mode;
 
     uint16_t MAGIC_2;
 } __attribute__((packed)) Cmd;
-
 //  NOTE: on some arduinos double is 4 bytes here, so we need to use float
 // otherwise our struct changes size and breaks everything
-
-typedef struct _to_arduino {
-   uint16_t magic;
-} __attribute__((packed)) To_Arduino;
 
 /**
  * This is used as part of the serialisation process. 
  * It alows us to covert the struct used for communication into bytes we can send across the serial port.
  */
-typedef struct _msg_adaptor {
+typedef struct _msg_adapter {
     union {
         Cmd cmd;
         uint8_t buffer[sizeof(Cmd)];
     };
-} Msg_Adaptor;
+} Msg_Adapter;
 
 Cmd joystick_loop();
 void send_msg(Cmd msg);
@@ -67,35 +49,13 @@ void send_msg(Cmd msg);
  */
 void setup() {
     // start the serial driver
-    Serial.begin(19200);
+    Serial.begin(9600);
 }
 
 /**
  * Main loop of the arduino. Handles communication and calling joystick_loop.
  */
 void loop() {
-    // we use this so the computer can tell where the message starts
-    uint8_t MAGIC[2] = {0xBE, 0xEF};
-    
-    bool found_first = false;
-    int bytes_read = 0;
-    
-    // read until there are no bytes left
-    while(Serial.available() > 0) {
-        uint8_t val = Serial.read();
-        if(val == MAGIC[1]) {
-          bytes_read = 0;
-          found_first = true;
-        }
-
-        // once we've found the start read out the bytes
-        if(found_first) {
-          if(bytes_read >=  sizeof(To_Arduino))  {
-              break;
-          }
-        }
-    }
-    
     //declare a cmd struct
     Cmd cmd;
     // zero the command struct
@@ -111,6 +71,16 @@ void loop() {
 }
 
 /**
+ * Don't modify this, uses the serial connection to send the command to the rover
+ * @param msg the struct to send
+ */
+void send_msg(Cmd msg) {
+    Msg_Adapter adapter;
+    adapter.cmd = msg;
+    Serial.write(adapter.buffer, sizeof(Cmd));
+}
+
+/**
  * Implement your code in this function. Does all the sensor processing and provides commands for the rover
  * @return the commands for the rover's joints
  */
@@ -121,19 +91,7 @@ Cmd joystick_loop() {
     // this should make the rover turn at a 45deg whilst driving forward
     command.drive_vector.x = 1.0;
     command.drive_vector.y = 1.0;
+    command.drive_mode = 0;
 
     return command;
 }
-
-/**
- * Don't modify this, uses the serial connection to send the command to the rover
- * @param msg the struct to send
- */
-void send_msg(Cmd msg) {
-    Msg_Adaptor adaptor;
-    adaptor.cmd = msg;
-    Serial.write(adaptor.buffer, sizeof(Cmd));
-}
-
-
-
