@@ -2,7 +2,7 @@
  * This is a code stub for BLUEsat's orientation day. It provides a basis for code that runs on an arduino to take
  * inputs from sensors and use them to drive the BLUEtounge Rover.
  * @date: 24/02/2017
- * @author: Harry J.E Day
+ * @author: Harry J.E Day, William Miles
  */
 #include <Arduino.h>
 #include <inttypes.h>
@@ -78,6 +78,13 @@ void send_msg(Cmd msg) {
     Msg_Adapter adapter;
     adapter.cmd = msg;
     Serial.write(adapter.buffer, sizeof(Cmd));
+}
+
+/**
+ * Implement your setup code here.
+ */
+void joystick_setup() {
+
 }
 
 /**
